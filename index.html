@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Асинхронная обработка задач | Архитектура</title>
+    <!-- Font Awesome для иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* ---------- Глобальные стили ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+            background: #0b0e14;
+            color: #e4e9f2;
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        /* ---------- Хедер ---------- */
+        .header {
+            text-align: center;
+            padding: 2rem 0 3rem;
+            border-bottom: 1px solid #2a2f3a;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f0b34b, #ff7e5f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #9aa4b8;
+            margin-top: 0.5rem;
+        }
+
+        .header .badge {
+            display: inline-block;
+            margin-top: 1rem;
+            background: #1f2630;
+            padding: 0.4rem 1.2rem;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            color: #f0b34b;
+            border: 1px solid #3a4150;
+            letter-spacing: 0.5px;
+        }
+
+        /* ---------- Секция "Почему не в HTTP?" ---------- */
+        .problem-section {
+            background: #131a22;
+            border-radius: 20px;
+            padding: 2rem 2.5rem;
+            margin-bottom: 3rem;
+            border-left: 6px solid #ff7e5f;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .problem-section h2 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.8rem;
+            color: #fff;
+        }
+
+        .problem-section h2 i {
+            color: #ff7e5f;
+        }
+
+        .problem-section ul {
+            margin-top: 1rem;
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.2rem;
+        }
+
+        .problem-section ul li {
+            background: #1e2732;
+            padding: 1rem 1.2rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+            border: 1px solid #2e3846;
+        }
+
+        .problem-section ul li i {
+            color: #f0b34b;
+            font-size: 1.4rem;
+            width: 28px;
+        }
+
+        /* ---------- Схема: Жизненный цикл задачи ---------- */
+        .schema-section {
+            background: #11181f;
+            border-radius: 28px;
+            padding: 2.5rem 2rem;
+            margin-bottom: 3rem;
+            border: 1px solid #2a333f;
+        }
+
+        .schema-section h2 {
+            text-align: center;
+            font-weight: 400;
+            font-size: 1.6rem;
+            margin-bottom: 2.5rem;
+            letter-spacing: 1px;
+        }
+
+        .schema-section h2 i {
+            color: #f0b34b;
+            margin-right: 12px;
+        }
+
+        .flow {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem 1.2rem;
+        }
+
+        .flow-item {
+            background: #1d2632;
+            border-radius: 16px;
+            padding: 1.2rem 1.8rem;
+            min-width: 140px;
+            text-align: center;
+            border: 1px solid #35404f;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: transform 0.15s;
+        }
+
+        .flow-item:hover {
+            transform: translateY(-4px);
+            border-color: #f0b34b;
+        }
+
+        .flow-item .icon {
+            font-size: 2.2rem;
+            margin-bottom: 0.3rem;
+            color: #f0b34b;
+        }
+
+        .flow-item .label {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .flow-item .sub {
+            font-size: 0.75rem;
+            color: #9aa4b8;
+            margin-top: 4px;
+        }
+
+        .flow-arrow {
+            font-size: 1.8rem;
+            color: #5a6a7e;
+            font-weight: 300;
+        }
+
+        /* ---------- Сетка с карточками теорий ---------- */
+        .theory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .theory-card {
+            background: #131b24;
+            border-radius: 20px;
+            padding: 1.8rem 2rem;
+            border: 1px solid #26303e;
+            transition: all 0.2s;
+        }
+
+        .theory-card:hover {
+            border-color: #f0b34b;
+            background: #181f2a;
+        }
+
+        .theory-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .theory-card h3 i {
+            color: #f0b34b;
+            width: 28px;
+        }
+
+        .theory-card p, .theory-card li {
+            color: #c8d0dc;
+            font-size: 0.98rem;
+        }
+
+        .theory-card ul {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 0.5rem;
+        }
+
+        .theory-card ul li {
+            padding: 0.3rem 0;
+            border-bottom: 1px solid #1f2937;
+        }
+
+        .theory-card ul li:last-child {
+            border-bottom: none;
+        }
+
+        .theory-card ul li i {
+            color: #f0b34b;
+            width: 20px;
+            margin-right: 8px;
+        }
+
+        .highlight {
+            color: #f5c45c;
+            font-weight: 500;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 0.8rem;
+        }
+
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .compare-table th {
+            background: #1f2a38;
+            color: #f0b34b;
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .compare-table td {
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid #26303e;
+        }
+
+        .compare-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #2e3a4a;
+            padding: 0.15rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #cdd9e9;
+            margin-right: 4px;
+        }
+
+        .tag.good { background: #2d4a3b; color: #9bdfb0; }
+        .tag.warn { background: #4a3f2d; color: #f0d08c; }
+        .tag.bad { background: #4a2d2d; color: #f09c8c; }
+
+        /* ---------- Секция "Отравленные сообщения" ---------- */
+        .poison-section {
+            background: #1c1118;
+            border-radius: 20px;
+            padding: 2rem 2.5rem;
+            margin: 3rem 0;
+            border: 1px solid #5f3f4a;
+            border-left: 6px solid #d95763;
+        }
+
+        .poison-section h2 {
+            color: #f5a0a8;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .poison-section h2 i {
+            color: #d95763;
+        }
+
+        .poison-section .cols {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .poison-section .cols > div {
+            flex: 1 1 200px;
+            background: #231a22;
+            padding: 1rem 1.5rem;
+            border-radius: 14px;
+        }
+
+        /* ---------- Футер ---------- */
+        .footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid #1f2833;
+            color: #6b7b8f;
+            font-size: 0.9rem;
+        }
+
+        /* Адаптив */
+        @media (max-width: 700px) {
+            .header h1 { font-size: 2.2rem; }
+            .flow-arrow { display: none; }
+            .flow-item { min-width: 100px; padding: 0.8rem 1rem; }
+            .theory-grid { grid-template-columns: 1fr; }
+            .problem-section ul { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <header class="header">
+        <h1>⏳ Асинхронный Python</h1>
+        <p>Фоновые задачи, очереди и брокеры сообщений</p>
+        <span class="badge"><i class="fas fa-code"></i> Архитектура микросервисов &bull; Celery &bull; RabbitMQ &bull; Redis</span>
+    </header>
+
+    <!-- БЛОК: ПОЧЕМУ НЕ В HTTP -->
+    <section class="problem-section">
+        <h2><i class="fas fa-exclamation-triangle"></i> Почему нельзя выполнять долгие задачи в HTTP-запросе?</h2>
+        <ul>
+            <li><i class="fas fa-hourglass-half"></i> <strong>Тайм-ауты</strong> — клиент (браузер/nginx) оборвет соединение через 30–60 сек.</li>
+            <li><i class="fas fa-tachometer-alt"></i> <strong>Блокировка</strong> — воркеры веб-сервера (gunicorn/uwsgi) заняты, новые запросы ждут.</li>
+            <li><i class="fas fa-memory"></i> <strong>Утечки памяти</strong> — тяжелые операции (PDF, парсинг) могут привести к OOM.</li>
+            <li><i class="fas fa-redo-alt"></i> <strong>Отсутствие retry</strong> — при сбое отправки email или генерации PDF всю операцию придется перезапускать вручную.</li>
+        </ul>
+    </section>
+
+    <!-- СХЕМА: ЖИЗНЕННЫЙ ЦИКЛ ЗАДАЧИ -->
+    <section class="schema-section">
+        <h2><i class="fas fa-project-diagram"></i> Жизненный цикл фоновой задачи</h2>
+        <div class="flow">
+            <div class="flow-item">
+                <div class="icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                <div class="label">API / HTTP</div>
+                <div class="sub">Пользователь отправляет запрос</div>
+            </div>
+            <span class="flow-arrow"><i class="fas fa-chevron-right"></i></span>
+
+            <div class="flow-item">
+                <div class="icon"><i class="fas fa-exchange-alt"></i></div>
+                <div class="label">Брокер</div>
+                <div class="sub">RabbitMQ / Redis</div>
+            </div>
+            <span class="flow-arrow"><i class="fas fa-chevron-right"></i></span>
+
+            <div class="flow-item">
+                <div class="icon"><i class="fas fa-microchip"></i></div>
+                <div class="label">Воркер (Celery)</div>
+                <div class="sub">Выполняет задачу</div>
+            </div>
+            <span class="flow-arrow"><i class="fas fa-chevron-right"></i></span>
+
+            <div class="flow-item">
+                <div class="icon"><i class="fas fa-database"></i></div>
+                <div class="label">Backend / Хранилище</div>
+                <div class="sub">Результат (Redis / SQL)</div>
+            </div>
+            <span class="flow-arrow"><i class="fas fa-chevron-right"></i></span>
+
+            <div class="flow-item">
+                <div class="icon"><i class="fas fa-check-circle"></i></div>
+                <div class="label">Клиент</div>
+                <div class="sub">Получает уведомление / статус</div>
+            </div>
+        </div>
+        <p style="text-align: center; margin-top: 2rem; color: #9aa4b8; font-size: 0.95rem;">
+            <i class="fas fa-arrow-right" style="color: #f0b34b;"></i>
+            API возвращает <code>task_id</code> сразу (202 Accepted), клиент опрашивает статус или получает webhook.
+        </p>
+    </section>
+
+    <!-- ТЕОРИЯ: СЕТКА КАРТОЧЕК -->
+    <div class="theory-grid">
+
+        <!-- 1. Брокеры -->
+        <div class="theory-card">
+            <h3><i class="fas fa-robot"></i> Брокеры сообщений</h3>
+            <p><strong>RabbitMQ</strong> (AMQP) — очередь с маршрутизацией, подтверждениями, dead-letter. <span class="highlight">Надежность</span>.</p>
+            <p><strong>Redis</strong> — быстрый, in-memory, но есть риск потери данных при сбое. <span class="highlight">Скорость</span>.</p>
+            <p><strong>Kafka</strong> — распределенный лог (streaming). Хранит сообщения долго, репликация. <span class="highlight">Масштаб</span>.</p>
+            <div class="table-wrap">
+                <table class="compare-table">
+                    <tr><th>Характеристика</th><th>RabbitMQ</th><th>Redis</th><th>Kafka</th></tr>
+                    <tr><td>Модель</td><td>Очередь (push)</td><td>Pub/Sub + List</td><td>Лог (pull)</td></tr>
+                    <tr><td>Персистентность</td><td><span class="tag good">Да</span></td><td><span class="tag warn">Опционально</span></td><td><span class="tag good">Да</span></td></tr>
+                    <tr><td>Порядок сообщений</td><td>Гарантирован</td><td>Гарантирован</td><td>Гарантирован (в партиции)</td></tr>
+                    <tr><td>Сложность</td><td>Средняя</td><td>Низкая</td><td>Высокая</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. Celery + Альтернативы -->
+        <div class="theory-card">
+            <h3><i class="fas fa-cogs"></i> Архитектура Celery</h3>
+            <p><strong>Broker</strong> (Rabbit/Redis) — хранит задачи. <strong>Worker</strong> — выполняет. <strong>Backend</strong> — хранит результаты.</p>
+            <p><i class="fas fa-code-branch"></i> Альтернативы в Python:</p>
+            <ul>
+                <li><i class="fas fa-bolt"></i> <strong>RQ</strong> — легкий, только Redis, простой API.</li>
+                <li><i class="fas fa-feather-alt"></i> <strong>Huey</strong> — встроенный планировщик, поддержка SQLite/Redis.</li>
+                <li><i class="fas fa-rocket"></i> <strong>Dramatiq</strong> — быстрый, с акцентом на надежность, совместим с Rabbit/Redis.</li>
+            </ul>
+            <p style="margin-top: 0.5rem;"><span class="tag good">Celery</span> — самый функциональный, но тяжелый. <span class="tag warn">RQ/Huey</span> — для небольших проектов.</p>
+        </div>
+
+        <!-- 3. Идемпотентность + Poison Pills -->
+        <div class="theory-card">
+            <h3><i class="fas fa-shield-alt"></i> Идемпотентность &amp; Poison Pills</h3>
+            <p><strong>Идемпотентность</strong> — повторное выполнение задачи не меняет результат (например, обновление статуса заказа по ID).</p>
+            <p><i class="fas fa-skull"></i> <strong>Poison pill</strong> — сообщение, которое воркер не может обработать (битые данные, невалидный JSON).</p>
+            <ul>
+                <li><i class="fas fa-check-circle"></i> <strong>Решение:</strong> оборачивать выполнение в <code>try/except</code>, логировать ошибку, отправлять в <strong>dead-letter queue</strong>.</li>
+                <li><i class="fas fa-redo"></i> <strong>Retry</strong> с экспоненциальной задержкой (не более N попыток).</li>
+                <li><i class="fas fa-database"></i> Хранить состояние задачи (pending, retry, failed, success).</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- БЛОК: ОТРАВЛЕННЫЕ СООБЩЕНИЯ ПОДРОБНЕЕ -->
+    <section class="poison-section">
+        <h2><i class="fas fa-biohazard"></i> Как бороться с "отравленными" сообщениями?</h2>
+        <div class="cols">
+            <div>
+                <i class="fas fa-bug" style="color: #d95763;"></i>
+                <h4 style="margin: 0.5rem 0;">Обнаружение</h4>
+                <p style="font-size: 0.95rem;">Отлавливаем <code>Exception</code>, проверяем структуру данных, таймауты.</p>
+            </div>
+            <div>
+                <i class="fas fa-ambulance"></i>
+                <h4 style="margin: 0.5rem 0;">Стратегия</h4>
+                <p style="font-size: 0.95rem;">Dead Letter Exchange (Rabbit) + отдельная очередь для "битых" задач. В Celery: <code>acks_late</code> и <code>reject_on_worker_lost</code>.</p>
+            </div>
+            <div>
+                <i class="fas fa-chart-line"></i>
+                <h4 style="margin: 0.5rem 0;">Мониторинг</h4>
+                <p style="font-size: 0.95rem;">Flower / Prometheus. Отслеживаем количество failed задач, чтобы вовремя исправить код воркера.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ДОПОЛНИТЕЛЬНО: Celery схема (текстовая) -->
+    <div style="background: #0f161e; border-radius: 20px; padding: 1.8rem 2rem; border: 1px solid #29323f; margin: 2rem 0;">
+        <h3 style="display: flex; gap: 10px; align-items: center;"><i class="fas fa-sitemap" style="color: #f0b34b;"></i> Детали жизненного цикла задачи в Celery</h3>
+        <ol style="margin-left: 1.5rem; color: #c8d0dc; padding: 0.5rem 0;">
+            <li><strong>Вызов</strong>: <code>send_email.delay(to, body)</code> → задача сериализуется (JSON/Pickle) и отправляется в брокер.</li>
+            <li><strong>Брокер</strong>: сохраняет сообщение в очередь (напр. <code>celery</code>). RabbitMQ подтверждает получение.</li>
+            <li><strong>Worker</strong>: постоянно слушает очередь. Захватывает задачу, десериализует, выполняет.</li>
+            <li><strong>Результат</strong>: если задан backend (Redis/DB), воркер сохраняет результат или статус ошибки.</li>
+            <li><strong>Retry</strong>: при ошибке воркер может повторно отправить задачу в брокер с задержкой (<code>countdown</code>).</li>
+            <li><strong>ACK</strong>: после успешного выполнения воркер отправляет <code>ack</code> брокеру, сообщение удаляется из очереди.</li>
+        </ol>
+        <p style="color: #9aa4b8; font-size: 0.9rem; margin-top: 0.5rem;"><i class="fas fa-info-circle"></i> Для длительных задач используют <code>acks_late=True</code> — подтверждение только после выполнения (защита от потери задачи при падении воркера).</p>
+    </div>
+
+    <!-- ФУТЕР -->
+    <footer class="footer">
+        <i class="fas fa-arrow-circle-right"></i> Задание 7: Фоновые задачи, очереди и брокеры сообщений &bull; Схема архитектуры &bull; 2026
+    </footer>
+
+</div>
+</body>
+</html>
